@@ -1,0 +1,300 @@
+<template>
+  <div class="country-detail">
+    <a @click="$router.go(-1)" class="backBtn"><i class="fas fa-arrow-left" /> Retour</a>
+
+    <!-- Error Handling -->
+    <h1 v-if="error !== null">Désolé une erreur est détectée : {{error}}</h1>
+    <!-- Loading API response -->
+    <div class="loaderFlex"><div v-if="pending" class="loader"></div></div>
+
+    <div v-for="country in countryInfo" class="countryTile" v-bind:key="country.id">
+      <img v-bind:src="country.flag" alt="Country Flag" class="flag">
+      <div class="country-details">
+        <h1>{{country.name}}</h1>
+        <div class="listDiv">
+          <ul>
+            <li><span>Nom d'origine :</span> {{country.nativeName}}</li>
+            <li><span>Population :</span> {{country.population | formatNumbers }}</li>
+            <li><span>Continent :</span> {{country.region}}</li>
+            <li><span>Région :</span> {{country.subregion}}</li>
+            <li><span>Capitale :</span> {{country.capital}}</li>
+          </ul>
+          <ul>
+            <li><span>Nom de domaine :</span> {{country.topLevelDomain['0']}}</li>
+            <li><span>Monnaies :</span> {{country.currencies['0'].name}}</li>
+            <li><span>Langages:</span> 
+              <span 
+                v-for="(language, index) in country.languages" 
+                v-bind:key="index" 
+                class="languages">
+                {{language.name}}<span v-if="index + 1 < country.languages.length">, </span>
+              </span>
+            </li>
+          </ul>
+        </div>
+        <div class="borders">
+          <div class="bordersWrapper">
+            <!-- Check if borders exist for this country, if no show text-->
+            <span class="noBorders" v-if="countryInfo['0'].borders.length === 0">Pas de pays limitrophe</span>
+            <!-- If yes load border countries -->
+            <span class="borderTitle" v-else>Pays limitrophes : </span>
+            <span v-for="countryBorderDetails in borderCountries" v-bind:key="countryBorderDetails.id" class="borderList">
+              <router-link :to="{ name: 'country-detail', params: { country: countryBorderDetails.name }}" class="borderLinks">
+                {{countryBorderDetails.name}} 
+              </router-link>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from 'axios';
+
+export default {
+  name: 'country-detail',
+  data () {
+    return {
+      // API loading animation, error message, API response
+      pending: false,
+      error: null,
+      countryInfo: null,
+      // Border country API request
+      borderCountries: null,
+      alpha3Code: [],
+      alpha3CodetoString: [],
+    }
+  },
+  mounted () {
+    this.pending = true;
+    // API request to load country data
+    axios
+      .get(`https://restcountries.eu/rest/v2/name/${this.$route.params.country}?fullText=true`)
+      .then((response) => {
+        (this.countryInfo = response.data)
+
+        // API request to load border data
+        this.alpha3Code = this.countryInfo['0'].borders;
+        this.alpha3CodetoString = this.alpha3Code.join(';');
+        return axios
+          .get(`https://restcountries.eu/rest/v2/alpha?codes=${this.alpha3CodetoString}`)
+          .then(response => (this.borderCountries = response.data))
+          .catch(error => (this.errorBorders = error))
+      })
+      .catch(error => (this.error = error ))
+      .finally( () => { this.pending = false });
+  },
+  // Function to format the population number with commas
+  filters: {
+    formatNumbers (value) {
+      return `${value.toLocaleString()}`
+    }
+  }
+}
+</script>
+
+
+<style scoped>
+h1{
+  margin-bottom: 10px;
+}
+
+.country-detail {
+    background: #ffffffc4;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-size: 16px;
+    margin: 50px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+/* loading animation */
+.loader {
+  border: 16px solid #f3f3f3;
+  border-top: 16px solid #2b3845; 
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  animation: spin 2s linear infinite;
+  transition: 1s ease;
+}
+.borders .loader {
+  width: 60px;
+  height: 60px;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.loaderFlex {
+  display: flex;
+  justify-content: center;
+}
+
+.backBtn, .borderLinks {
+  display: block;
+  background: #fff;
+  width: 130px;
+  box-shadow: 1px 1px 7px 0px rgb(0, 0, 0, 0.20);
+  cursor: pointer;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #111517;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.fa-arrow-left {
+  padding-right: 7px;
+}
+
+/* Fade in animation using CSS 3 animations */
+.countryTile {
+  display: flex;
+  padding-top: 70px;
+}
+
+.countryTile {
+  -webkit-animation: fadein 1s; /* Safari, Chrome and Opera > 12.1 */
+       -moz-animation: fadein 1s; /* Firefox < 16 */
+        -ms-animation: fadein 1s; /* Internet Explorer */
+         -o-animation: fadein 1s; /* Opera < 12.1 */
+            animation: fadein 1s;
+}
+@keyframes fadein {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Firefox < 16 */
+@-moz-keyframes fadein {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Safari, Chrome and Opera > 12.1 */
+@-webkit-keyframes fadein {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Internet Explorer */
+@-ms-keyframes fadein {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.flag {
+  max-width: 570px;
+  min-width: 350px;
+  padding-bottom: 70px;
+  width: 100%;
+  height: 100%;
+}
+img.flag {
+    border: 1px solid #020e1b;
+    padding-bottom: 0 !important;
+    margin:auto;
+}
+.country-details {
+  text-align: center;
+  width: 100%;
+  color: #020e1b;
+  margin: 0 40px;
+}
+
+.listDiv {
+  display: flex;
+  margin:0 30px;
+}
+
+.country-details ul {
+  list-style: none;
+  text-align: center;
+  line-height: 32px;
+  padding-left: 0;
+}
+
+.country-details ul:last-child {
+  margin: 0 0 0 auto;
+}
+
+li span {
+  font-weight: 600;
+}
+
+.languages, .languages span {
+  font-weight: 400;
+}
+
+.borders {
+  display: flex;
+}
+
+.borderTitle {
+  font-weight: 600;
+  padding-right: 5px;
+}
+
+.bordersWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  padding-top: 16px;
+}
+
+.borderList {
+  padding-bottom: 10px;
+}
+
+.borderLinks {
+  margin: 0 5px;
+  min-width: 100px;
+  width: inherit;
+  padding: 0;
+  display: table;
+  align-self: center;
+  padding: 2px 5px;
+}
+
+.noBorders {
+  font-weight: 600;
+}
+a.backBtn, a.borderLinks {
+    background: #e4872c;
+    color: white;
+    padding:5px 15px;
+}
+a.backBtn:hover, a.borderLinks:hover {
+    background-color: #f0bb86;
+}
+
+@media (max-width: 875px) {
+  .country-detail {
+    padding: 25px;
+  }
+  .country-details {
+   margin: 0;
+}
+  .backBtn {
+    margin-top: 22px;
+  }
+  .countryTile {
+    flex-direction: column;
+  }
+  .flag {
+    min-width: 325px;
+    height: 100%;
+  }
+  .listDiv {
+    flex-direction: column;
+  }
+  .country-details ul:last-child {
+    margin: inherit;
+    padding-top: 40px;
+  }
+}
+
+</style>
